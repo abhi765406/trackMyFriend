@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<style>
+  html, body, #map { height: 100%; margin: 0; padding: 0; background: #0D1117; }
+  .pulse-wrap { position: relative; width: 22px; height: 22px; }
+  .pulse-dot {
+    position: absolute; top: 5px; left: 5px; width: 12px; height: 12px;
+    border-radius: 50%; background: #2E7DF7; border: 2px solid #ffffff;
+    box-shadow: 0 0 0 2px rgba(46,125,247,0.35);
+  }
+  .pulse-ring {
+    position: absolute; top: 0; left: 0; width: 22px; height: 22px;
+    border-radius: 50%; background: rgba(46,125,247,0.35);
+    animation: pulse 1.8s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(0.4); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="leaflet/leaflet.js"></script>
+<script>
+  var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([20.5937, 78.9629], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
+
+  var icon = L.divIcon({
+    className: '',
+    html: '<div class="pulse-wrap"><div class="pulse-ring"></div><div class="pulse-dot"></div></div>',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+
+  var marker = null;
+  var accuracyCircle = null;
+  var hasCentered = false;
+
+  // Called from Kotlin via evaluateJavascript — one-way only, no JS-to-native
+  // bridge is registered, so a compromised/untrusted page could never call back.
+  function updateLocation(lat, lng, accuracyMeters) {
+    var latLng = [lat, lng];
+    if (!marker) {
+      marker = L.marker(latLng, { icon: icon }).addTo(map);
+    } else {
+      marker.setLatLng(latLng);
+    }
+    if (!accuracyCircle) {
+      accuracyCircle = L.circle(latLng, {
+        radius: accuracyMeters, color: '#2E7DF7', weight: 1,
+        fillColor: '#2E7DF7', fillOpacity: 0.08
+      }).addTo(map);
+    } else {
+      accuracyCircle.setLatLng(latLng);
+      accuracyCircle.setRadius(accuracyMeters);
+    }
+    if (!hasCentered) {
+      map.setView(latLng, 16);
+      hasCentered = true;
+    } else {
+      map.panTo(latLng, { animate: true, duration: 0.6 });
+    }
+  }
+</script>
+</body>
+</html>
